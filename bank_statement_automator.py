@@ -65,7 +65,10 @@ def fetch_transactions(start_date: str, end_date: str, token: str, creds: Dict[s
         cert=(creds["cert"], creds["key"]),
     )
     response.raise_for_status()
-    return response.json()
+    data = response.json()
+    # The API returns an object with a "transacoes" field containing the list
+    # of transactions. The OFX generator expects to receive this list directly.
+    return data.get("transacoes", data)
 
 
 def fetch_balance(end_date: str, token: str, creds: Dict[str, str]):
