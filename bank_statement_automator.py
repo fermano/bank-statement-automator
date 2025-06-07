@@ -185,8 +185,16 @@ def upload_to_drive(filepath: str, drive_credentials: str) -> str:
     if GoogleAuth is None:
         raise RuntimeError("pydrive2 is required for Google Drive uploads")
     gauth = GoogleAuth()
-    gauth.credentials = None  # Replace with logic to load credentials
-    # gauth.LoadCredentialsFile(drive_credentials)
+    # Use service account credentials JSON for authentication
+    if hasattr(gauth, "ServiceAccountAuth"):
+        gauth.ServiceAccountAuth(drive_credentials)
+    else:
+        from oauth2client.service_account import ServiceAccountCredentials
+        scopes = ["https://www.googleapis.com/auth/drive.file"]
+        gauth.credentials = ServiceAccountCredentials.from_json_keyfile_name(
+            drive_credentials, scopes=scopes
+        )
+        gauth.auth_method = "service"
     drive = GoogleDrive(gauth)
     file_drive = drive.CreateFile({"title": os.path.basename(filepath)})
     file_drive.SetContentFile(filepath)

@@ -19,7 +19,7 @@ python bank_statement_automator.py \
   --fim YYYY-MM-DD \
   --output-dir ./saida \
   --bank-creds caminho/credenciais_banco.json \
-  --drive-creds <ARQUIVO_CREDENCIAIS_DRIVE> \
+  --drive-creds caminho/service_account.json \
   --sendgrid-key <API_KEY_SENDGRID> \
   --recipients email1@example.com,email2@example.com
 ```
@@ -28,7 +28,8 @@ python bank_statement_automator.py \
 - **--output-dir** define o diretório onde os arquivos serão salvos.
 - **--bank-creds** caminho para um arquivo JSON com `client_id`, `client_secret`,
   `cert`, `key` e `account` do Banco Inter.
-- **--drive-creds** deve apontar para o arquivo de credenciais do Google Drive.
+- **--drive-creds** deve apontar para o arquivo JSON da conta de serviço do
+  Google Drive (obtenha em "Google Cloud Console").
 - **--sendgrid-key** é a chave da API do SendGrid para envio de e-mails.
 - **--recipients** lista de e-mails de destino separada por vírgula.
 
