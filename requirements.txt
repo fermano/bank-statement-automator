@@ -1,0 +1,3 @@
+requests
+pydrive2
+sendgrid
