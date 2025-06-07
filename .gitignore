@@ -1,0 +1,81 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.venv.bak/
+*.egg-info/
+
+# Pipenv
+Pipfile.lock
+
+# Poetry
+poetry.lock
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Test and coverage
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.cache/
+*.cover
+nosetests.xml
+test-output/
+
+# Build artifacts
+build/
+dist/
+*.egg
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+
+# Logs
+*.log
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Pytype
+.pytype/
+
+# Bandit
+.bandit
+
+# Local env vars / secrets
+.env
+.env.*
+*.secret
+secrets.json
+creds.json
+
+# Output folder
+saida

@@ -292,7 +292,7 @@ def main():
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
 
-    base_name = f"{start_date}-{end_date}"
+    base_name = f"Extrato-{start_date}-a-{end_date}"
     pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
     ofx_path = os.path.join(output_dir, f"{base_name}.ofx")
 
