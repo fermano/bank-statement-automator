@@ -1,6 +1,7 @@
 import argparse
 import os
 import base64
+import json
 import requests
 from typing import List
 
@@ -85,12 +86,41 @@ def send_email(files: List[str], recipients: List[str], api_key: str, subject: s
     print(f"Email sent to {', '.join(recipients)}")
 
 
+def get_bank_token(creds_path: str) -> str:
+    """Retrieve an OAuth token from Banco Inter using stored credentials."""
+    with open(creds_path) as f:
+        creds = json.load(f)
+
+    request_body = (
+        f"client_id={creds['client_id']}"
+        f"&client_secret={creds['client_secret']}"
+        f"&scope=extrato.read"
+        f"&grant_type=client_credentials"
+    )
+
+    response = requests.post(
+        "https://cdpj.partners.bancointer.com.br/oauth/v2/token",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        cert=(creds["cert"], creds["key"]),
+        data=request_body,
+    )
+    response.raise_for_status()
+    token = response.json().get("access_token")
+    if not token:
+        raise RuntimeError("Token não encontrado na resposta do Banco Inter")
+    return token
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Banco Inter statement automator")
     parser.add_argument("--de", dest="start", required=True, help="Data de (YYYY-MM-DD)")
     parser.add_argument("--ate", dest="end", required=True, help="Data até (YYYY-MM-DD)")
     parser.add_argument("--output-dir", default="./output", help="Diretório para salvar arquivos")
-    parser.add_argument("--bank-token", required=True, help="Token de acesso ao Banco Inter")
+    parser.add_argument(
+        "--bank-creds",
+        required=True,
+        help="Arquivo JSON com client_id, client_secret, cert e key do Banco Inter",
+    )
     parser.add_argument("--drive-creds", required=True, help="Credenciais do Google Drive")
     parser.add_argument("--sendgrid-key", required=True, help="API key do SendGrid")
     parser.add_argument("--recipients", required=True, help="Lista de emails separada por vírgula")
@@ -108,8 +138,9 @@ def main():
     pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
     ofx_path = os.path.join(output_dir, f"{base_name}.ofx")
 
-    pdf_content = fetch_statement("pdf", start_date, end_date, args.bank_token)
-    ofx_content = fetch_statement("ofx", start_date, end_date, args.bank_token)
+    token = get_bank_token(args.bank_creds)
+    pdf_content = fetch_statement("pdf", start_date, end_date, token)
+    ofx_content = fetch_statement("ofx", start_date, end_date, token)
 
     save_file(pdf_content, pdf_path)
     save_file(ofx_content, ofx_path)

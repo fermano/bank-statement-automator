@@ -18,7 +18,7 @@ python bank_statement_automator.py \
   --de YYYY-MM-DD \
   --ate YYYY-MM-DD \
   --output-dir ./saida \
-  --bank-token <TOKEN_BANCO> \
+  --bank-creds caminho/credenciais_banco.json \
   --drive-creds <ARQUIVO_CREDENCIAIS_DRIVE> \
   --sendgrid-key <API_KEY_SENDGRID> \
   --recipients email1@example.com,email2@example.com
@@ -26,12 +26,27 @@ python bank_statement_automator.py \
 
 - **--de** e **--ate** representam o período desejado do extrato.
 - **--output-dir** define o diretório onde os arquivos serão salvos.
-- **--bank-token** deve conter o token de acesso à API do Banco Inter.
+- **--bank-creds** caminho para um arquivo JSON com `client_id`, `client_secret`, `cert` e `key` do Banco Inter.
 - **--drive-creds** deve apontar para o arquivo de credenciais do Google Drive.
 - **--sendgrid-key** é a chave da API do SendGrid para envio de e-mails.
 - **--recipients** lista de e-mails de destino separada por vírgula.
 
 Os arquivos gerados seguirão o padrão `<data de>-<data até>.pdf` e `<data de>-<data até>.ofx`.
+
+### Arquivo de credenciais do Banco Inter
+
+Crie um JSON com as credenciais de API do banco:
+
+```json
+{
+  "client_id": "<seu_client_id>",
+  "client_secret": "<seu_client_secret>",
+  "cert": "/caminho/certificado.crt",
+  "key": "/caminho/chave.key"
+}
+```
+
+O caminho para esse arquivo deve ser passado no parâmetro `--bank-creds`.
 
 ## Observações
 
