@@ -181,7 +181,14 @@ def save_file(content: bytes, path: str):
     print(f"Saved file {path}")
 
 
-def upload_to_drive(filepath: str, drive_credentials: str) -> str:
+DEFAULT_DRIVE_FOLDER_ID = "15IK2XcKpNAwH5vd7a05sTyZ0CTPzacLu"
+
+
+def upload_to_drive(
+    filepath: str,
+    drive_credentials: str,
+    folder_id: str = DEFAULT_DRIVE_FOLDER_ID,
+) -> str:
     if GoogleAuth is None:
         raise RuntimeError("pydrive2 is required for Google Drive uploads")
     gauth = GoogleAuth()
@@ -196,7 +203,10 @@ def upload_to_drive(filepath: str, drive_credentials: str) -> str:
         )
         gauth.auth_method = "service"
     drive = GoogleDrive(gauth)
-    file_drive = drive.CreateFile({"title": os.path.basename(filepath)})
+    file_drive = drive.CreateFile({
+        "title": os.path.basename(filepath),
+        "parents": [{"id": folder_id}],
+    })
     file_drive.SetContentFile(filepath)
     file_drive.Upload()
     print(f"Uploaded {filepath} to Google Drive")
@@ -265,6 +275,11 @@ def parse_args():
         ),
     )
     parser.add_argument("--drive-creds", required=True, help="Credenciais do Google Drive")
+    parser.add_argument(
+        "--drive-folder-id",
+        default=DEFAULT_DRIVE_FOLDER_ID,
+        help="ID da pasta do Google Drive para upload",
+    )
     parser.add_argument("--sendgrid-key", required=True, help="API key do SendGrid")
     parser.add_argument("--recipients", required=True, help="Lista de emails separada por vírgula")
     return parser.parse_args()
@@ -291,8 +306,8 @@ def main():
     save_file(pdf_content, pdf_path)
     save_file(ofx_content, ofx_path)
 
-    upload_to_drive(pdf_path, args.drive_creds)
-    upload_to_drive(ofx_path, args.drive_creds)
+    upload_to_drive(pdf_path, args.drive_creds, args.drive_folder_id)
+    upload_to_drive(ofx_path, args.drive_creds, args.drive_folder_id)
 
     recipients = [email.strip() for email in args.recipients.split(",")]
     send_email([pdf_path, ofx_path], recipients, args.sendgrid_key,
