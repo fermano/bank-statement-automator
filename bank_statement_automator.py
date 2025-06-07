@@ -3,7 +3,13 @@ import os
 import base64
 import json
 import requests
-from typing import List
+from typing import List, Dict
+
+
+def load_bank_credentials(path: str) -> Dict[str, str]:
+    """Load Banco Inter credentials from a JSON file."""
+    with open(path) as f:
+        return json.load(f)
 
 # Placeholder for Google Drive integration
 try:
@@ -22,23 +28,31 @@ except ImportError:
     Mail = None
 
 
-def fetch_statement(format: str, start_date: str, end_date: str, token: str) -> bytes:
-    """Fetch statement file from Banco Inter API.
-    This function contains placeholders for demonstration purposes."""
-    url = f"https://api.bancointer.com.br/bankstatements/{format}"  # Placeholder URL
+def fetch_statement(
+    fmt: str,
+    start_date: str,
+    end_date: str,
+    token: str,
+    creds: Dict[str, str],
+) -> bytes:
+    """Retrieve statement data from Banco Inter."""
+    url = "https://cdpj.partners.bancointer.com.br/banking/v2/extrato"
     headers = {
         "Authorization": f"Bearer {token}",
+        "x-conta-corrente": creds["account"],
+        "Content-Type": "Application/json",
     }
-    params = {
-        "dataInicio": start_date,
-        "dataFim": end_date,
-    }
-    # In a real implementation, you would perform:
-    # response = requests.get(url, headers=headers, params=params)
-    # response.raise_for_status()
-    # return response.content
-    print(f"Fetching {format} statement from {start_date} to {end_date} ...")
-    return b"PLACEHOLDER_FILE_CONTENT"
+    params = {"dataInicio": start_date, "dataFim": end_date}
+    response = requests.get(
+        url,
+        params=params,
+        headers=headers,
+        cert=(creds["cert"], creds["key"]),
+    )
+    response.raise_for_status()
+    # Esta API retorna JSON; em um cenário real, seriam usados endpoints
+    # específicos para PDF e OFX.
+    return response.content
 
 
 def save_file(content: bytes, path: str):
@@ -86,10 +100,8 @@ def send_email(files: List[str], recipients: List[str], api_key: str, subject: s
     print(f"Email sent to {', '.join(recipients)}")
 
 
-def get_bank_token(creds_path: str) -> str:
-    """Retrieve an OAuth token from Banco Inter using stored credentials."""
-    with open(creds_path) as f:
-        creds = json.load(f)
+def get_bank_token(creds: Dict[str, str]) -> str:
+    """Retrieve an OAuth token from Banco Inter using loaded credentials."""
 
     request_body = (
         f"client_id={creds['client_id']}"
@@ -119,7 +131,10 @@ def parse_args():
     parser.add_argument(
         "--bank-creds",
         required=True,
-        help="Arquivo JSON com client_id, client_secret, cert e key do Banco Inter",
+        help=(
+            "Arquivo JSON com client_id, client_secret, cert, key e account do "
+            "Banco Inter"
+        ),
     )
     parser.add_argument("--drive-creds", required=True, help="Credenciais do Google Drive")
     parser.add_argument("--sendgrid-key", required=True, help="API key do SendGrid")
@@ -138,9 +153,10 @@ def main():
     pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
     ofx_path = os.path.join(output_dir, f"{base_name}.ofx")
 
-    token = get_bank_token(args.bank_creds)
-    pdf_content = fetch_statement("pdf", start_date, end_date, token)
-    ofx_content = fetch_statement("ofx", start_date, end_date, token)
+    bank_creds = load_bank_credentials(args.bank_creds)
+    token = get_bank_token(bank_creds)
+    pdf_content = fetch_statement("pdf", start_date, end_date, token, bank_creds)
+    ofx_content = fetch_statement("ofx", start_date, end_date, token, bank_creds)
 
     save_file(pdf_content, pdf_path)
     save_file(ofx_content, ofx_path)

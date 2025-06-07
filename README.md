@@ -26,7 +26,8 @@ python bank_statement_automator.py \
 
 - **--de** e **--ate** representam o período desejado do extrato.
 - **--output-dir** define o diretório onde os arquivos serão salvos.
-- **--bank-creds** caminho para um arquivo JSON com `client_id`, `client_secret`, `cert` e `key` do Banco Inter.
+- **--bank-creds** caminho para um arquivo JSON com `client_id`, `client_secret`,
+  `cert`, `key` e `account` do Banco Inter.
 - **--drive-creds** deve apontar para o arquivo de credenciais do Google Drive.
 - **--sendgrid-key** é a chave da API do SendGrid para envio de e-mails.
 - **--recipients** lista de e-mails de destino separada por vírgula.
@@ -42,7 +43,8 @@ Crie um JSON com as credenciais de API do banco:
   "client_id": "<seu_client_id>",
   "client_secret": "<seu_client_secret>",
   "cert": "/caminho/certificado.crt",
-  "key": "/caminho/chave.key"
+  "key": "/caminho/chave.key",
+  "account": "<sua_conta_corrente>"
 }
 ```
 
