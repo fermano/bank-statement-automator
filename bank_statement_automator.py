@@ -4,6 +4,8 @@ import base64
 import json
 import requests
 from typing import List, Dict
+from uuid import uuid4
+from datetime import date
 
 
 def load_bank_credentials(path: str) -> Dict[str, str]:
@@ -28,14 +30,27 @@ except ImportError:
     Mail = None
 
 
-def fetch_statement(
-    fmt: str,
-    start_date: str,
-    end_date: str,
-    token: str,
-    creds: Dict[str, str],
-) -> bytes:
-    """Retrieve statement data from Banco Inter."""
+def fetch_pdf(start_date: str, end_date: str, token: str, creds: Dict[str, str]) -> bytes:
+    """Retrieve PDF statement from Banco Inter."""
+    url = "https://cdpj.partners.bancointer.com.br/banking/v2/extrato/exportar"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "x-conta-corrente": creds["account"],
+        "Content-Type": "Application/json",
+    }
+    params = {"dataInicio": start_date, "dataFim": end_date}
+    response = requests.get(
+        url,
+        params=params,
+        headers=headers,
+        cert=(creds["cert"], creds["key"]),
+    )
+    response.raise_for_status()
+    return response.content
+
+
+def fetch_transactions(start_date: str, end_date: str, token: str, creds: Dict[str, str]):
+    """Retrieve transaction list from Banco Inter."""
     url = "https://cdpj.partners.bancointer.com.br/banking/v2/extrato"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -50,9 +65,106 @@ def fetch_statement(
         cert=(creds["cert"], creds["key"]),
     )
     response.raise_for_status()
-    # Esta API retorna JSON; em um cenário real, seriam usados endpoints
-    # específicos para PDF e OFX.
-    return response.content
+    return response.json()
+
+
+def fetch_balance(end_date: str, token: str, creds: Dict[str, str]):
+    """Retrieve account balance from Banco Inter."""
+    url = "https://cdpj.partners.bancointer.com.br/banking/v2/saldo"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "x-conta-corrente": creds["account"],
+        "Content-Type": "Application/json",
+    }
+    params = {"dataSaldo": end_date}
+    response = requests.get(
+        url,
+        params=params,
+        headers=headers,
+        cert=(creds["cert"], creds["key"]),
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def generate_ofx(transactions, saldo, start_date: str, end_date: str) -> bytes:
+    """Generate an OFX file from transactions and balance info."""
+    lines = [
+        "OFXHEADER:100",
+        "DATA:OFXSGML",
+        "VERSION:102",
+        "SECURITY:NONE",
+        "ENCODING:USASCII",
+        "CHARSET:1252",
+        "COMPRESSION:NONE",
+        "OLDFILEUID:NONE",
+        "NEWFILEUID:NONE",
+        "",
+        "<OFX>",
+        "<SIGNONMSGSRSV1>",
+        "<SONRS>",
+        "<STATUS>",
+        "<CODE>0</CODE>",
+        "<SEVERITY>INFO</SEVERITY>",
+        "</STATUS>",
+        f"<DTSERVER>{date.today().strftime('%Y%m%d')}</DTSERVER>",
+        "<LANGUAGE>POR</LANGUAGE>",
+        "<FI>",
+        "<ORG>Banco Intermedium S/A</ORG>",
+        "<FID>077</FID>",
+        "</FI>",
+        "</SONRS>",
+        "</SIGNONMSGSRSV1>",
+        "<BANKMSGSRSV1>",
+        "<STMTTRNRS>",
+        "<TRNUID>1001</TRNUID>",
+        "<STATUS>",
+        "<CODE>0</CODE>",
+        "<SEVERITY>INFO</SEVERITY>",
+        "</STATUS>",
+        "<STMTRS>",
+        "<CURDEF>BRL</CURDEF>",
+        "<BANKACCTFROM>",
+        "<BANKID>077</BANKID>",
+        "<BRANCHID>0001-9</BRANCHID>",
+        "<ACCTID>94401993</ACCTID>",
+        "<ACCTTYPE>CHECKING</ACCTTYPE>",
+        "</BANKACCTFROM>",
+        "<BANKTRANLIST>",
+        f"<DTSTART>{start_date.replace('-', '')}</DTSTART>",
+        f"<DTEND>{end_date.replace('-', '')}</DTEND>",
+    ]
+
+    for tr in transactions:
+        tipo = "CREDIT" if tr.get("tipoOperacao") == "C" else "PAYMENT"
+        dt = tr.get("dataEntrada", "").replace("-", "")
+        valor = tr.get("valor", 0)
+        desc = tr.get("descricao", "")
+        lines.extend([
+            "<STMTTRN>",
+            f"<TRNTYPE>{tipo}</TRNTYPE>",
+            f"<DTPOSTED>{dt}</DTPOSTED>",
+            f"<TRNAMT>{'-' if tipo == 'PAYMENT' else ''}{valor}</TRNAMT>",
+            f"<FITID>{uuid4().hex}</FITID>",
+            "<CHECKNUM>077</CHECKNUM>",
+            "<REFNUM>077</REFNUM>",
+            f"<MEMO>{desc}</MEMO>",
+            "</STMTTRN>",
+        ])
+
+    lines.extend([
+        "</BANKTRANLIST>",
+        "<LEDGERBAL>",
+        f"<BALAMT>{saldo.get('disponivel')}</BALAMT>",
+        f"<DTASOF>{date.today().strftime('%Y%m%d')}</DTASOF>",
+        "</LEDGERBAL>",
+        "</STMTRS>",
+        "</STMTTRNRS>",
+        "</BANKMSGSRSV1>",
+        "</OFX>",
+    ])
+
+    return "\n".join(lines).encode("utf-8")
 
 
 def save_file(content: bytes, path: str):
@@ -125,8 +237,8 @@ def get_bank_token(creds: Dict[str, str]) -> str:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Banco Inter statement automator")
-    parser.add_argument("--de", dest="start", required=True, help="Data de (YYYY-MM-DD)")
-    parser.add_argument("--ate", dest="end", required=True, help="Data até (YYYY-MM-DD)")
+    parser.add_argument("--inicio", required=True, help="Data inicio (YYYY-MM-DD)")
+    parser.add_argument("--fim", required=True, help="Data fim (YYYY-MM-DD)")
     parser.add_argument("--output-dir", default="./output", help="Diretório para salvar arquivos")
     parser.add_argument(
         "--bank-creds",
@@ -144,8 +256,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    start_date = args.start
-    end_date = args.end
+    start_date = args.inicio
+    end_date = args.fim
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
 
@@ -155,8 +267,10 @@ def main():
 
     bank_creds = load_bank_credentials(args.bank_creds)
     token = get_bank_token(bank_creds)
-    pdf_content = fetch_statement("pdf", start_date, end_date, token, bank_creds)
-    ofx_content = fetch_statement("ofx", start_date, end_date, token, bank_creds)
+    pdf_content = fetch_pdf(start_date, end_date, token, bank_creds)
+    transactions = fetch_transactions(start_date, end_date, token, bank_creds)
+    saldo = fetch_balance(end_date, token, bank_creds)
+    ofx_content = generate_ofx(transactions, saldo, start_date, end_date)
 
     save_file(pdf_content, pdf_path)
     save_file(ofx_content, ofx_path)

@@ -15,8 +15,8 @@ pip install -r requirements.txt
 
 ```bash
 python bank_statement_automator.py \
-  --de YYYY-MM-DD \
-  --ate YYYY-MM-DD \
+  --inicio YYYY-MM-DD \
+  --fim YYYY-MM-DD \
   --output-dir ./saida \
   --bank-creds caminho/credenciais_banco.json \
   --drive-creds <ARQUIVO_CREDENCIAIS_DRIVE> \
@@ -24,7 +24,7 @@ python bank_statement_automator.py \
   --recipients email1@example.com,email2@example.com
 ```
 
-- **--de** e **--ate** representam o período desejado do extrato.
+- **--inicio** e **--fim** representam o período desejado do extrato.
 - **--output-dir** define o diretório onde os arquivos serão salvos.
 - **--bank-creds** caminho para um arquivo JSON com `client_id`, `client_secret`,
   `cert`, `key` e `account` do Banco Inter.
@@ -32,7 +32,7 @@ python bank_statement_automator.py \
 - **--sendgrid-key** é a chave da API do SendGrid para envio de e-mails.
 - **--recipients** lista de e-mails de destino separada por vírgula.
 
-Os arquivos gerados seguirão o padrão `<data de>-<data até>.pdf` e `<data de>-<data até>.ofx`.
+Os arquivos gerados seguirão o padrão `<data inicio>-<data fim>.pdf` e `<data inicio>-<data fim>.ofx`.
 
 ### Arquivo de credenciais do Banco Inter
 
