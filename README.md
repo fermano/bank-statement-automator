@@ -54,3 +54,5 @@ O caminho para esse arquivo deve ser passado no parâmetro `--bank-creds`.
 
 - As chamadas de API para o Banco Inter estão representadas com placeholders e devem ser ajustadas conforme a documentação oficial do banco.
 - É necessário configurar corretamente as credenciais do Google Drive e do SendGrid para que o envio funcione.
+- O endpoint de exportação do extrato retorna um JSON com o campo `pdf` em
+  Base64. O script decodifica esse campo para gerar o arquivo PDF.

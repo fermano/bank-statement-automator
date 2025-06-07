@@ -46,7 +46,12 @@ def fetch_pdf(start_date: str, end_date: str, token: str, creds: Dict[str, str])
         cert=(creds["cert"], creds["key"]),
     )
     response.raise_for_status()
-    return response.content
+    data = response.json()
+    pdf_b64 = data.get("pdf") if isinstance(data, dict) else None
+    if not pdf_b64:
+        # Fallback to raw content if response is already PDF bytes
+        return response.content
+    return base64.b64decode(pdf_b64)
 
 
 def fetch_transactions(start_date: str, end_date: str, token: str, creds: Dict[str, str]):
