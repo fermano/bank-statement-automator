@@ -21,13 +21,11 @@ except ImportError:
     GoogleAuth = None
     GoogleDrive = None
 
-# Placeholder for SendGrid integration
+# Placeholder for MailerSend integration
 try:
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+    from mailersend import emails as ms_emails
 except ImportError:
-    SendGridAPIClient = None
-    Mail = None
+    ms_emails = None
 
 
 def fetch_pdf(start_date: str, end_date: str, token: str, creds: Dict[str, str]) -> bytes:
@@ -214,27 +212,37 @@ def upload_to_drive(
 
 
 def send_email(files: List[str], recipients: List[str], api_key: str, subject: str):
-    if SendGridAPIClient is None:
-        raise RuntimeError("sendgrid package is required for sending emails")
-    message = Mail(
-        from_email="noreply@example.com",
-        to_emails=recipients,
-        subject=subject,
-        html_content="Please find attached your bank statements.",
+    """Send an email with attachments using MailerSend."""
+    if ms_emails is None:
+        raise RuntimeError("mailersend package is required for sending emails")
+
+    mailer = ms_emails.NewEmail(api_key)
+    mail_body = {}
+    mail_from = {"name": "No Reply", "email": "noreply@example.com"}
+    mailer.set_mail_from(mail_from, mail_body)
+    mailer.set_mail_to([{"email": r} for r in recipients], mail_body)
+    mailer.set_subject(subject, mail_body)
+    mailer.set_plaintext_content(
+        "Please find attached your bank statements.", mail_body
     )
+
+    attachments = []
     for path in files:
         with open(path, "rb") as f:
             data = f.read()
-        encoded = base64.b64encode(data).decode()
-        attachment = Attachment(
-            FileContent(encoded),
-            FileName(os.path.basename(path)),
-            FileType("application/octet-stream"),
-            Disposition("attachment"),
+        attachments.append(
+            {
+                "id": os.path.basename(path),
+                "filename": os.path.basename(path),
+                "content": base64.b64encode(data).decode("ascii"),
+                "disposition": "attachment",
+            }
         )
-        message.add_attachment(attachment)
-    sg = SendGridAPIClient(api_key)
-    sg.send(message)
+
+    if attachments:
+        mailer.set_attachments(attachments, mail_body)
+
+    mailer.send(mail_body)
     print(f"Email sent to {', '.join(recipients)}")
 
 
@@ -280,8 +288,16 @@ def parse_args():
         default=DEFAULT_DRIVE_FOLDER_ID,
         help="ID da pasta do Google Drive para upload",
     )
-    parser.add_argument("--sendgrid-key", required=True, help="API key do SendGrid")
-    parser.add_argument("--recipients", required=True, help="Lista de emails separada por vírgula")
+    parser.add_argument(
+        "--mailersend-key",
+        required=True,
+        help="Chave de API do MailerSend",
+    )
+    parser.add_argument(
+        "--recipients",
+        required=True,
+        help="Lista de emails separada por vírgula",
+    )
     return parser.parse_args()
 
 
@@ -310,8 +326,12 @@ def main():
     upload_to_drive(ofx_path, args.drive_creds, args.drive_folder_id)
 
     recipients = [email.strip() for email in args.recipients.split(",")]
-    send_email([pdf_path, ofx_path], recipients, args.sendgrid_key,
-               subject=f"Extrato {start_date} - {end_date}")
+    send_email(
+        [pdf_path, ofx_path],
+        recipients,
+        args.mailersend_key,
+        subject=f"Extrato {start_date} - {end_date}",
+    )
 
 
 if __name__ == "__main__":
