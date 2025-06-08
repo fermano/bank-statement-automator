@@ -5,7 +5,7 @@ import json
 import requests
 from typing import List, Dict
 from uuid import uuid4
-from datetime import date
+from datetime import datetime, date
 
 
 def load_bank_credentials(path: str) -> Dict[str, str]:
@@ -220,16 +220,42 @@ def upload_to_drive(
     return file_drive["id"]
 
 
-def send_email(files: List[str], recipients: List[str], api_key: str, subject: str):
+def send_email(files: List[str], recipients: List[str], api_key: str, subject: str, data_fim: str):
     """Send an email with attachments using SendGrid."""
     if SendGridAPIClient is None:
         raise RuntimeError("sendgrid package is required for sending emails")
 
+    # Parse to datetime object
+    date_obj = datetime.strptime(data_fim, "%Y-%m-%d")
+
+    # Extract month as integer
+    month_num = date_obj.month  # e.g., 5
+
+    # Month names in Portuguese
+    month_dict = {
+        1: "janeiro",
+        2: "fevereiro",
+        3: "março",
+        4: "abril",
+        5: "maio",
+        6: "junho",
+        7: "julho",
+        8: "agosto",
+        9: "setembro",
+        10: "outubro",
+        11: "novembro",
+        12: "dezembro"
+    }
+
+    mes = month_dict.get(month_num, "mês desconhecido")
+
+    mensagem = "Olá<p><p>Segue anexo o extrato do mês de {}.<p><p>Obrigado,<p>Fernando Mano".format(mes)
+
     message = Mail(
-        from_email="noreply@example.com",
+        from_email="uphive@uphive.com.br",
         to_emails=recipients,
         subject=subject,
-        html_content="Please find attached your bank statements.",
+        html_content=mensagem,
     )
     for path in files:
         with open(path, "rb") as f:
@@ -331,7 +357,8 @@ def main():
         [pdf_path, ofx_path],
         recipients,
         args.sendgrid_key,
-        subject=f"Extrato {start_date} - {end_date}",
+        f"Extrato {start_date} - {end_date}",
+        end_date
     )
 
 
